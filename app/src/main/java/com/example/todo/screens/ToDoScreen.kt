@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -25,8 +26,9 @@ import androidx.wear.compose.material.rememberSwipeableState
 import androidx.wear.compose.material.swipeable
 import com.example.domain.repository.ToDo
 import com.example.todo.R
-import com.example.todo.screens.ToDoScreenVIewModel
+import kotlinx.coroutines.delay
 import org.koin.androidx.compose.koinViewModel
+import kotlinx.coroutines.delay as coroutinesDelay
 
 @Composable
 fun ToDoScreen(todoViewModel: ToDoScreenVIewModel = koinViewModel()) {
@@ -37,19 +39,33 @@ fun ToDoScreen(todoViewModel: ToDoScreenVIewModel = koinViewModel()) {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFE3F2FD)) // Use a light background color
+            .background(Color(0xFFE3F2FD)) // Light background color
     ) {
         Image(
             painter = painterResource(R.drawable.rocket_pencil_svgrepo_com),
             contentDescription = "background",
-            Modifier.align(Alignment.Center).size(400.dp)
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(400.dp)
         )
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 40.dp)
+                .padding(top = 40.dp),
+            contentPadding = PaddingValues(20.dp)
         ) {
-            items(state.value) { todo ->
+
+//            Why Providing a Key Works
+//            State Isolation : Without a key, LazyColumn may reuse the composable
+//            instances, causing states like swipeableState or isDeleted to be shared or misapplied across items.
+//            Stable Identity : A key tells Compose which items are the same between recompositions .
+//            This ensures that actions or animations on one item don't mistakenly affect others.
+//            Efficient Rendering : Compose optimizes updates by only recomposing the items that actually changed,
+//            improving performance for large lists.
+
+            items(state.value, key = { it.uid }) { todo ->
+//                coroutinesDelay(timeMillis = 500)
                 TodoCard(todo = todo, onDelete = { todoViewModel.deleteTodo(todo.uid) })
             }
         }
@@ -57,15 +73,13 @@ fun ToDoScreen(todoViewModel: ToDoScreenVIewModel = koinViewModel()) {
         FloatingActionButton(
             onClick = { openDialog.value = true },
             modifier = Modifier
-                .align(Alignment.BottomEnd) // Align to the bottom end of the screen
+                .align(Alignment.BottomEnd)
                 .padding(
                     bottom = WindowInsets.navigationBars
                         .asPaddingValues()
                         .calculateBottomPadding() + 20.dp
                 )
-                .padding(
-                    end = 15.dp
-                )
+                .padding(end = 15.dp)
                 .size(70.dp),
             elevation = FloatingActionButtonDefaults.elevation(
                 defaultElevation = 30.dp,
@@ -81,21 +95,19 @@ fun ToDoScreen(todoViewModel: ToDoScreenVIewModel = koinViewModel()) {
         }
     }
 
-    // Dialog to add a new Todo
     if (openDialog.value) {
         AddTodoDialog(
             onDismiss = { openDialog.value = false },
             onAdd = {
-                if (title.value.isBlank()) {
-                    return@AddTodoDialog
-                }
-                todoViewModel.addTodo(
-                    ToDo(
-                        uid = 0,
-                        title = title.value
+                if (title.value.isNotBlank()) {
+                    todoViewModel.addTodo(
+                        ToDo(
+                            uid = 0,
+                            title = title.value
+                        )
                     )
-                )
-                openDialog.value = false
+                    openDialog.value = false
+                }
             },
             titleState = title
         )
@@ -105,56 +117,58 @@ fun ToDoScreen(todoViewModel: ToDoScreenVIewModel = koinViewModel()) {
 @Composable
 fun Dp.toPx(): Float {
     val density = LocalDensity.current
-    return remember(density) { with(density) { this@toPx.toPx() } }
+    return with(density) { this@toPx.toPx() }
 }
-
 
 @OptIn(ExperimentalWearMaterialApi::class)
 @Composable
 fun TodoCard(todo: ToDo, onDelete: (Int) -> Unit) {
+    // Create a swipeable state for each card, ensuring independence
     val swipeableState = rememberSwipeableState(initialValue = 0)
-    val maxSwipeDistance = 200.dp.toPx() // Define the maximum swipe distance
+    val maxSwipeDistance = with(LocalDensity.current) { 150.dp.toPx() } // Define max swipe distance
     val randomColor = remember { mutableStateOf(randomColor()) }
+    var isDeleted by remember { mutableStateOf(false) } // Track if this card is already deleted
 
-    // Box to contain swipeable card and manage state
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp)
-            .swipeable(
-                state = swipeableState,
-                anchors = mapOf(0f to 0, maxSwipeDistance to 1), // Anchors for swipe state
-                thresholds = { _, _ -> FractionalThreshold(0.2f) }, // Swipe threshold to trigger delete
-                orientation = Orientation.Horizontal
-            )
-            .offset {
-                IntOffset(swipeableState.offset.value.toInt(), 0) // Move card on swipe
-            }
-            .background(
-                if (swipeableState.offset.value > maxSwipeDistance / 2) Color.Transparent else randomColor.value,
-                shape = RoundedCornerShape(5.dp)
-            ) // Background change on swipe
-            .padding(16.dp)
-    ) {
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(
-                text = todo.title, modifier = Modifier.weight(1f),
-                style = TextStyle(
-                    fontSize = 22.sp,
-                    letterSpacing = 1.sp
+    if (!isDeleted) { // Only render if the card is not marked for deletion
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .swipeable(
+                    state = swipeableState,
+                    anchors = mapOf(
+                        0f to 0,
+                        maxSwipeDistance to 1
+                    ), // Define anchors for swipe states
+                    thresholds = { _, _ -> FractionalThreshold(0.7f) }, // Define threshold (70% swipe distance)
+                    orientation = Orientation.Horizontal
                 )
-            )
-        }
+                .offset {
+                    IntOffset(swipeableState.offset.value.toInt(), 0) // Move card on swipe
+                }
+                .background(
+                    if (swipeableState.offset.value > maxSwipeDistance / 2) Color.Transparent else randomColor.value,
+                    shape = RoundedCornerShape(5.dp)
+                ) // Background change on swipe
+                .padding(16.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(text = todo.title, modifier = Modifier.weight(1f))
+                IconButton(onClick = { onDelete(todo.uid) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete Todo")
+                }
+            }
 
-        // Automatically delete when fully swiped (swipe past threshold)
-        LaunchedEffect(swipeableState.offset.value) {
-            if (swipeableState.offset.value > maxSwipeDistance / 2) {
-                onDelete(todo.uid) // Trigger deletion when swipe reaches threshold
+            // Trigger deletion when the swipe reaches the threshold and prevent retrigger
+            LaunchedEffect(swipeableState.offset.value) {
+                if (!isDeleted && swipeableState.offset.value > maxSwipeDistance * 0.7) {
+                    isDeleted = true // Mark the card as deleted
+                    onDelete(todo.uid) // Trigger the deletion
+                }
             }
         }
     }

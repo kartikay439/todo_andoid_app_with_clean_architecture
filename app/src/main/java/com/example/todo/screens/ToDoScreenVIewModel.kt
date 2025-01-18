@@ -1,5 +1,3 @@
-package com.example.todo.screens
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.domain.repository.ToDo
@@ -11,37 +9,43 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 class ToDoScreenVIewModel(
+
     private val addTodoUseCase: AddTodoUseCase,
     private val deleteTodoUseCase: DeleteTodoUseCase,
     private val getAllTodoUseCase: GetAllTodoUseCase
 ) : ViewModel() {
-    val todos_state = MutableStateFlow<List<ToDo>>(emptyList())
-    val state = todos_state.asStateFlow()
+
+    // The state representing all the todos
+    private val _todosState = MutableStateFlow<List<ToDo>>(emptyList())
+    val state = _todosState.asStateFlow()
+
     init {
+        // Fetch all todos when the ViewModel is created
         getAllTodo()
     }
 
+    // Add a new Todo
     fun addTodo(todo: ToDo) {
         viewModelScope.launch {
-            addTodoUseCase(todo)
-            getAllTodo()
-
+            addTodoUseCase(todo) // Add the todo
+            getAllTodo()          // Fetch the updated list of todos
         }
     }
 
+    // Delete a Todo by UID
     fun deleteTodo(uid: Int) {
         viewModelScope.launch {
-            deleteTodoUseCase(uid)
-            getAllTodo()
+            deleteTodoUseCase(uid) // Delete the todo
+            getAllTodo()           // Fetch the updated list of todos
         }
     }
 
+    // Fetch all todos and update the state
     fun getAllTodo() {
         viewModelScope.launch {
-            getAllTodoUseCase().collect {
-                todos_state.value = it
+            getAllTodoUseCase().collect { todos ->
+                _todosState.value = todos // Update the state with the fetched todos
             }
         }
-
     }
 }

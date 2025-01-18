@@ -1,6 +1,6 @@
 package com.example.todo.di
 
-import com.example.todo.screens.ToDoScreenVIewModel
+import ToDoScreenVIewModel
 import org.koin.core.module.dsl.viewModel
 import org.koin.dsl.module
 
