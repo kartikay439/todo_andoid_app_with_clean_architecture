@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:name=".ToDO"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@drawable/rocket_pencil_svgrepo_com"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.ToDO"
+        tools:targetApi="31">
+<!--    <application android:name=".ToDO" what it will do-->
+<!--        Typically, defining android:name=".ToDO" within an application element in the AndroidManifest.xmlfile means you're specifying ToDO as the custom Application class for your Android app. This class extends the default Application class, enabling you to manage the application-level global state.-->
+
+<!--    Here’s what you can achieve by creating a custom Application class:-->
+
+<!--    Initialize Libraries: Set up libraries that need a reference to the Application context.-->
+
+<!--    Global Configuration: Apply configurations or initialize settings that influence the entire app.-->
+
+<!--    Dependency Injection: Set up dependency injection frameworks like Dagger or Hilt.-->
+
+<!--    App-Wide Shared Resources: Create resources or data you want to maintain throughout the app’s lifecycle.-->
+
+<!--    Do you need help with implementing a specific feature in your custom Application class? 😃-->
+
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:label="@string/app_name"
+            android:theme="@style/Theme.ToDO">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+
+</manifest>
